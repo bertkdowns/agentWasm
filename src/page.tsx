@@ -4,15 +4,16 @@ import { Renderer, StateProvider, ActionProvider, VisibilityProvider, Validation
 import { registry } from '@/lib/registry';
 
 export default function Page() {
-  const { spec, isStreaming, send } = useUIStream({
-    api: '/api/generate',
-  });
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    send(formData.get('prompt') as string);
-  };
+  const spec = {
+      root: "btn",
+      elements: {
+        btn: {
+          type: "Button",
+          props: { label: "Click me", variant: "primary" },
+          on: { press: { action: "confetti" } },
+        },
+      },
+    }
 
   return (
     <StateProvider initialState={{}}>
@@ -22,19 +23,9 @@ export default function Page() {
           navigate: (params) => console.log('Navigate:', params),
         }}>
           <ValidationProvider customFunctions={{}}>
-            <form onSubmit={handleSubmit}>
-              <input
-                name="prompt"
-                placeholder="Describe what you want..."
-                className="border p-2 rounded"
-              />
-              <button type="submit" disabled={isStreaming}>
-                Generate
-              </button>
-            </form>
 
             <div className="mt-8">
-              <Renderer spec={spec} registry={registry} loading={isStreaming} />
+              <Renderer spec={spec} registry={registry}/>
             </div>
           </ValidationProvider>
         </ActionProvider>
