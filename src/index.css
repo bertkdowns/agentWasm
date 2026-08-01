@@ -1,4 +1,7 @@
-@import 'tailwindcss'
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -30,10 +33,6 @@
     font-size: 16px;
   }
 }
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
-
 @custom-variant dark (&:is(.dark *));
 
 @media (prefers-color-scheme: dark) {
