@@ -1,18 +1,21 @@
 export const exampleSource = `
 
 // this function is declared by the host environment and is not implemented in AssemblyScript
-@external("env", "logInteger")
-export declare function logInteger(i: i32): void
+@external("env", "logString")
+export declare function logString(s: string): void
 
 // This function is implemented in AssemblyScript and can be called by the host environment
-export function add(a: i32, b: i32): i32 {
-  return a + b;
+export function add(a: string): i32 {
+  logString(a)
+  return a.length
 }
 `.trim()
 
 type CompilationResult = {
   binary: Uint8Array<ArrayBuffer>
   text: string
+  bindings: string
+  bindingsTypes: string
   version: string
 }
 

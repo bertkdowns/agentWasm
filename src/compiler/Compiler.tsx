@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { compileInWorker, exampleSource } from './compiler'
 import { Button } from '@base-ui/react/button'
 
@@ -25,6 +25,9 @@ export default function Compiler() {
             `Wasm size: ${result.binary.byteLength} bytes`,
             '',
             result.text || 'No WebAssembly text output was emitted.',
+            '',
+            'JavaScript bindings:',
+            result.bindings,
           ].join('\n'),
         )
         setStatus(
@@ -41,11 +44,14 @@ export default function Compiler() {
       try {
         const { instance } = await WebAssembly.instantiate(binary, {
           env: {
-            logInteger: (value: number) => console.log(value),
+            logString: (value: string) => console.log(value),
+            abort: () => {
+              throw new Error('Aborted')
+            }
           },
         })
-        const add = instance.exports.add as (a: number, b: number) => number
-        setExecutionOutput(`add(20, 22) = ${add(20, 22)}`)
+        const add = instance.exports.add as (a: string) => number
+        setExecutionOutput(`Result = ${add("Hello, World!")}`)
       } catch (error) {
         if (controller.signal.aborted) return
         setStatus('Execution failed')
