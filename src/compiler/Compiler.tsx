@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { instantiate } from 'assemblyscript/bindings'
 import { compileInWorker, exampleSource } from './compiler'
 import { Button } from '@base-ui/react/button'
 
@@ -16,18 +17,20 @@ export default function Compiler() {
 
     async function compileAndRun() {
       let binary: Uint8Array<ArrayBuffer>
+      let bindingsSchema: string
 
       try {
         const result = await compileInWorker(exampleSource, controller.signal)
         binary = result.binary
+        bindingsSchema = result.bindingsSchema
         setCompilationOutput(
           [
             `Wasm size: ${result.binary.byteLength} bytes`,
             '',
             result.text || 'No WebAssembly text output was emitted.',
             '',
-            'JavaScript bindings:',
-            result.bindings,
+            'JSON bindings:',
+            result.bindingsSchema,
           ].join('\n'),
         )
         setStatus(
@@ -42,7 +45,7 @@ export default function Compiler() {
       }
 
       try {
-        const { instance } = await WebAssembly.instantiate(binary, {
+        const { exports } = await instantiate(binary, bindingsSchema, {
           env: {
             logString: (value: string) => console.log(value),
             abort: () => {
@@ -50,7 +53,7 @@ export default function Compiler() {
             }
           },
         })
-        const add = instance.exports.add as (a: string) => number
+        const add = exports.add as (a: string) => number
         setExecutionOutput(`Result = ${add("Hello, World!")}`)
       } catch (error) {
         if (controller.signal.aborted) return

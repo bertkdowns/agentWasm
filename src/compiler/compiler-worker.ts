@@ -10,13 +10,13 @@ self.onmessage = async ({ data: { source } }) => {
       "module.ts",
       "--outFile", "module.wasm",
       "--textFile", "module.wat",
-      "--bindings", "raw",
+      "--bindings", "json",
       "--optimizeLevel", "3",
       "--runtime", "stub",
       "--no-unsafe"
     ], {
-      readFile: (filename) => filename === "module.ts" ? source : null,
-      writeFile: (filename, contents) => {
+      readFile: (filename: string) => filename === "module.ts" ? source : null,
+      writeFile: (filename: string, contents: string | Uint8Array) => {
         outputs.set(filename, contents);
       },
       listFiles: () => [],
@@ -24,15 +24,13 @@ self.onmessage = async ({ data: { source } }) => {
 
     const binary = outputs.get("module.wasm");
     const text = outputs.get("module.wat");
-    const bindings = outputs.get("module.js");
-    const bindingsTypes = outputs.get("module.d.ts");
+    const bindingsSchema = outputs.get("module.bindings.json");
 
     if (
       error ||
       !(binary instanceof Uint8Array) ||
       typeof text !== "string" ||
-      typeof bindings !== "string" ||
-      typeof bindingsTypes !== "string"
+      typeof bindingsSchema !== "string"
     ) {
       throw new Error(stderr.toString() || error?.message || "Compilation failed");
     }
@@ -42,8 +40,7 @@ self.onmessage = async ({ data: { source } }) => {
       {
         binary: transferableBinary,
         text,
-        bindings,
-        bindingsTypes,
+        bindingsSchema,
         version: asc.version,
       },
       { transfer: [transferableBinary.buffer] },
@@ -54,3 +51,5 @@ self.onmessage = async ({ data: { source } }) => {
     });
   }
 };
+
+self.postMessage({ ready: true });

@@ -14,23 +14,21 @@ export function add(a: string): i32 {
 type CompilationResult = {
   binary: Uint8Array<ArrayBuffer>
   text: string
-  bindings: string
-  bindingsTypes: string
+  bindingsSchema: string
   version: string
 }
 
-type WorkerResponse = CompilationResult | { error: string }
-
-const worker = new Worker(
-    new URL('./compiler-worker.ts', import.meta.url),
-    { type: 'module' },
-  )
+type WorkerResponse = CompilationResult | { error: string } | { ready: true }
 
 export async function compileInWorker(
   source: string,
   signal?: AbortSignal,
 ): Promise<CompilationResult> {
-  
+  const worker = new Worker(
+    new URL('./compiler-worker.ts', import.meta.url),
+    { type: 'module' },
+  )
+
   console.log('Worker created:', worker)
   try {
     return await new Promise((resolve, reject) => {
@@ -39,6 +37,12 @@ export async function compileInWorker(
       signal?.addEventListener('abort', abort, { once: true })
       worker.onmessage = ({ data }: MessageEvent<WorkerResponse>) => {
         console.log('Worker message received:', data)
+
+        if ('ready' in data) {
+          worker.postMessage({ source })
+          return
+        }
+
         signal?.removeEventListener('abort', abort)
 
         if ('error' in data) {
@@ -51,7 +55,6 @@ export async function compileInWorker(
         signal?.removeEventListener('abort', abort)
         reject(new Error(message))
       }
-      worker.postMessage({ source })
     })
   } finally {
     worker.terminate()
