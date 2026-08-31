@@ -11,4 +11,9 @@ export const { registry } = defineRegistry(catalog, {
     Button: shadcnComponents.Button,
     Input: shadcnComponents.Input,
   },
+  actions: {
+    confetti: async (params) => {
+      console.log('Confetti action triggered!', params);
+    },
+  },
 });

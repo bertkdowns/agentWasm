@@ -20,43 +20,87 @@ type CompilationResult = {
 
 type WorkerResponse = CompilationResult | { error: string } | { ready: true }
 
-export async function compileInWorker(
-  source: string,
-  signal?: AbortSignal,
-): Promise<CompilationResult> {
+let compilerWorker: Worker | undefined
+let compilerReady: Promise<Worker> | undefined
+
+function resetCompilerWorker(worker: Worker) {
+  worker.terminate()
+  if (compilerWorker === worker) {
+    compilerWorker = undefined
+    compilerReady = undefined
+  }
+}
+
+function getCompilerWorker(): Promise<Worker> {
+  if (compilerReady) return compilerReady
+
   const worker = new Worker(
     new URL('./compiler-worker.ts', import.meta.url),
     { type: 'module' },
   )
+  compilerWorker = worker
+  compilerReady = new Promise((resolve, reject) => {
+    const handleMessage = ({ data }: MessageEvent<WorkerResponse>) => {
+      if (!('ready' in data)) return
+      cleanup()
+      resolve(worker)
+    }
+    const handleError = ({ message }: ErrorEvent) => {
+      cleanup()
+      resetCompilerWorker(worker)
+      reject(new Error(message))
+    }
+    const cleanup = () => {
+      worker.removeEventListener('message', handleMessage)
+      worker.removeEventListener('error', handleError)
+    }
 
-  console.log('Worker created:', worker)
-  try {
-    return await new Promise((resolve, reject) => {
-      const abort = () => reject(signal?.reason)
+    worker.addEventListener('message', handleMessage)
+    worker.addEventListener('error', handleError)
+  })
 
-      signal?.addEventListener('abort', abort, { once: true })
-      worker.onmessage = ({ data }: MessageEvent<WorkerResponse>) => {
-        console.log('Worker message received:', data)
+  return compilerReady
+}
 
-        if ('ready' in data) {
-          worker.postMessage({ source })
-          return
-        }
+export function prepareCompiler(): Promise<void> {
+  return getCompilerWorker().then(() => undefined)
+}
 
-        signal?.removeEventListener('abort', abort)
+export async function compileInWorker(
+  source: string,
+  signal?: AbortSignal,
+): Promise<CompilationResult> {
+  const worker = await getCompilerWorker()
 
-        if ('error' in data) {
-          reject(new Error(data.error))
-        } else {
-          resolve(data)
-        }
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      signal?.removeEventListener('abort', handleAbort)
+      worker.removeEventListener('message', handleMessage)
+      worker.removeEventListener('error', handleError)
+    }
+    const handleAbort = () => {
+      cleanup()
+      resetCompilerWorker(worker)
+      reject(signal?.reason)
+    }
+    const handleMessage = ({ data }: MessageEvent<WorkerResponse>) => {
+      if ('ready' in data) return
+      cleanup()
+      if ('error' in data) {
+        reject(new Error(data.error))
+      } else {
+        resolve(data)
       }
-      worker.onerror = ({ message }) => {
-        signal?.removeEventListener('abort', abort)
-        reject(new Error(message))
-      }
-    })
-  } finally {
-    worker.terminate()
-  }
+    }
+    const handleError = ({ message }: ErrorEvent) => {
+      cleanup()
+      resetCompilerWorker(worker)
+      reject(new Error(message))
+    }
+
+    signal?.addEventListener('abort', handleAbort, { once: true })
+    worker.addEventListener('message', handleMessage)
+    worker.addEventListener('error', handleError)
+    worker.postMessage({ source })
+  })
 }

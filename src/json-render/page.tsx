@@ -2,11 +2,6 @@
 
 import {
   Renderer,
-  StateProvider,
-  ActionProvider,
-  VisibilityProvider,
-  ValidationProvider,
-  useUIStream,
   JSONUIProvider,
 } from "@json-render/react";
 import { registry } from "@/lib/registry";

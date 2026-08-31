@@ -1,9 +1,6 @@
-import asc from "assemblyscript/asc";
-
-console.log('AssemblyScript compiler loaded:', asc.version);
+import asc from 'assemblyscript/asc'
 
 self.onmessage = async ({ data: { source } }) => {
-  console.log('Worker received source code:', source);
   try {
     const outputs = new Map<string, string | Uint8Array>();
     const { error, stderr } = await asc.main([
@@ -50,6 +47,6 @@ self.onmessage = async ({ data: { source } }) => {
       error: error instanceof Error ? error.stack : String(error),
     });
   }
-};
+}
 
-self.postMessage({ ready: true });
+self.postMessage({ ready: true })
